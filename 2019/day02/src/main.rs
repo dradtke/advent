@@ -2,11 +2,26 @@ use std::io;
 use std::io::prelude::*;
 
 fn main() {
-    let mut program = read_program(io::stdin().lock());
-    program[1] = 12;
-    program[2] = 2;
-    program = run(program);
-    println!("Result: {}", program[0]);
+    let program = read_program(io::stdin().lock());
+    {
+        let mut program = program.clone();
+        program[1] = 12;
+        program[2] = 2;
+        program = run(program);
+        println!("part 1 = {}", program[0]);
+    }
+
+    {
+        'outer: for noun in 0..=99 {
+            for verb in 0..=99 {
+                let program = run_for(&program, noun, verb);
+                if program[0] == 19690720 {
+                    println!("part 2 = {}", (100 * noun) + verb);
+                    break 'outer;
+                }
+            }
+        }
+    }
 }
 
 type Program = Vec<usize>;
@@ -17,6 +32,13 @@ fn read_program<R: BufRead>(input: R) -> Program {
         .map(|bytes| String::from_utf8(bytes).unwrap())
         .map(|string| string.trim().parse::<usize>().unwrap())
         .collect()
+}
+
+fn run_for(program: &Program, noun: usize, verb: usize) -> Program {
+    let mut program = program.clone();
+    program[1] = noun;
+    program[2] = verb;
+    run(program)
 }
 
 fn run(mut program: Program) -> Program {
