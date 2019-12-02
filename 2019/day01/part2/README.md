@@ -3,7 +3,7 @@
 To run, use
 
 ```bash
-$ cargo run < input
+$ cargo run < ../input
 ```
 
 ## Testing
