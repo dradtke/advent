@@ -4,22 +4,25 @@ use std::io::prelude::*;
 use std::num;
 
 fn main() {
-    let input: Vec<Vec<Move>> = io::stdin().lock().lines()
+    let lines: Vec<String> = io::stdin().lock().lines()
         .map(|line| line.expect("failed to read data"))
-        .map(parse_moves)
-        .map(|value| value.expect("failed to parse move"))
         .collect();
-
-    let wires: Vec<HashSet<Position>> = input.into_iter()
-        .map(run)
-        .collect();
-
-    let result = wires[0].intersection(&(wires[1]))
-        .map(|pos| manhattan_distance(*pos))
-        .min()
-        .expect("failed to grab minimum value");
+    let result = run(&lines);
 
     println!("part 1: {}", result);
+}
+
+fn run<T: AsRef<str>>(input: &[T]) -> i32 {
+    let wires: Vec<HashSet<Position>> = input.into_iter()
+        .map(AsRef::as_ref)
+        .map(|line| parse_moves(line).expect("failed to parse moves"))
+        .map(walk)
+        .collect();
+
+    wires[0].intersection(&(wires[1]))
+        .map(|pos| manhattan_distance(*pos))
+        .min()
+        .expect("failed to grab minimum value")
 }
 
 #[derive(Debug, PartialEq)]
@@ -32,11 +35,12 @@ enum Direction {
 
 impl Direction {
     fn from(c: char) -> Option<Direction> {
+        use Direction::*;
         match c {
-            'U' => Some(Direction::Up),
-            'D' => Some(Direction::Down),
-            'L' => Some(Direction::Left),
-            'R' => Some(Direction::Right),
+            'U' => Some(Up),
+            'D' => Some(Down),
+            'L' => Some(Left),
+            'R' => Some(Right),
             _ => None,
         }
     }
@@ -72,7 +76,7 @@ fn parse_moves<T: AsRef<str>>(values: T) -> Result<Vec<Move>, ParseError> {
     values.as_ref().split(',').map(parse_move).collect()
 }
 
-fn run(wire: Vec<Move>) -> HashSet<Position> {
+fn walk(wire: Vec<Move>) -> HashSet<Position> {
     let mut x = 0;
     let mut y = 0;
     let mut result = HashSet::new();
@@ -121,8 +125,8 @@ mod tests {
     }
 
     #[test]
-    fn test_run() {
-        let result = run(vec![
+    fn test_walk() {
+        let result = walk(vec![
             (Right, 8),
             (Up, 5),
             (Left, 5),
@@ -141,5 +145,18 @@ mod tests {
     #[test]
     fn test_manhattan_distance() {
         assert_eq!(manhattan_distance((3, 3)), 6);
+    }
+
+    #[test]
+    fn test_run() {
+        assert_eq!(159, run(&[
+            "R75,D30,R83,U83,L12,D49,R71,U7,L72",
+            "U62,R66,U55,R34,D71,R55,D58,R83"
+        ]));
+
+        assert_eq!(135, run(&[
+            "R98,U47,R26,D63,R33,U87,L62,D20,R33,U53,R51",
+            "U98,R91,D20,R16,D67,R40,U7,R15,U6,R7",
+        ]));
     }
 }
