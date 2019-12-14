@@ -1,80 +1,193 @@
 use std::collections::HashMap;
+use std::cell::RefCell;
 use std::io::prelude::*;
+use std::rc::Rc;
 
 fn main() -> std::io::Result<()> {
-    let mut orbits = HashMap::new();
+    let mut nodes: HashMap<String, NodeRef> = HashMap::new();
     for line in std::io::stdin().lock().lines() {
-        mark_orbit(&mut orbits, line?);
+        let parts: Vec<String> = line?.split(")").map(|s| s.to_string()).collect();
+
+        let orbitee = nodes.entry(parts[0].clone())
+            .or_insert(Node::new_root(&parts[0]))
+            .clone();
+
+        let orbiter = nodes.entry(parts[1].clone())
+            .or_insert(Node::new_root(&parts[1]))
+            .clone();
+
+        if orbiter.borrow().orbiting.is_none() {
+            orbiter.borrow_mut().orbiting = Some(orbitee.clone());
+        }
+
+        orbitee.borrow_mut().orbiters.push(orbiter.clone());
     }
 
-    println!("part 1: {}", count_orbits(&orbits));
+    {
+        let mut total_orbits = 0;
+        for node in nodes.values() {
+            total_orbits += number_of_orbits(node.clone());
+        }
+        println!("part 1: {}", total_orbits);
+    }
+
+    {
+        let you = nodes.get("YOU").unwrap().clone();
+        let san = nodes.get("SAN").unwrap().clone();
+        let path = search(&vec![], you, san).unwrap();
+        println!("part 2: {}", orbital_transfers(&path));
+    }
+
     Ok(())
 }
 
-fn mark_orbit<S: ToString>(orbits: &mut HashMap<String, String>, line: S) {
-    let line = line.to_string();
-    let parts: Vec<&str> = line.split(")").collect();
-    orbits.insert(parts[1].to_string(), parts[0].to_string());
+#[derive(Debug)]
+struct Node {
+    name: String,
+    orbiting: Option<NodeRef>,
+    orbiters: Vec<NodeRef>,
 }
 
-fn count_orbits(orbits: &HashMap<String, String>) -> i32 {
-    orbits.keys()
-        .map(|key| orbiting(orbits, key))
-        .map(|orbiting| orbiting.len() as i32)
-        .sum()
-}
+type NodeRef = Rc<RefCell<Node>>;
 
-fn orbiting<S: ToString>(orbits: &HashMap<String, String>, object: S) -> Vec<&str> {
-    let object = object.to_string();
-    match orbits.get(&object) {
-        None => Vec::new(),
-        Some(target) => {
-            let mut result: Vec<&str> = vec![target];
-            result.append(&mut orbiting(&orbits, &target));
-            result
-        },
+impl Node {
+    fn new_root<S: ToString>(name: S) -> NodeRef {
+        Rc::new(RefCell::new(Node{
+            name: name.to_string(),
+            orbiting: None,
+            orbiters: Vec::new(),
+        }))
     }
+
+    #[cfg(test)]
+    fn new<S: ToString>(name: S, orbiting: NodeRef) -> NodeRef {
+        Rc::new(RefCell::new(Node{
+            name: name.to_string(),
+            orbiting: Some(orbiting),
+            orbiters: Vec::new(),
+        }))
+    }
+}
+
+#[cfg(test)]
+fn add_orbiter<S: ToString>(orbitee: &NodeRef, name: S) -> NodeRef {
+    let orbiter = Node::new(name, orbitee.clone());
+    orbitee.borrow_mut().orbiters.push(orbiter.clone());
+    orbiter
+}
+
+fn search(path: &Vec<NodeRef>, current: NodeRef, target: NodeRef) -> Option<Vec<NodeRef>> {
+    let mut path = path.clone();
+    path.push(current.clone());
+    // print_path(&path);
+
+    if current.borrow().name == target.borrow().name {
+        return Some(path);
+    }
+
+    for orbiter in &(current.borrow()).orbiters {
+        if !path_contains(&path, orbiter.clone()) {
+            if let Some(result) = search(&path, orbiter.clone(), target.clone()) {
+                return Some(result);
+            }
+        }
+    }
+
+    if let Some(orbiting) = &(current.borrow()).orbiting {
+        if !path_contains(&path, orbiting.clone()) {
+            if let Some(result) = search(&path, orbiting.clone(), target.clone()) {
+                return Some(result);
+            }
+        }
+    }
+
+    None
+}
+
+fn path_contains(path: &Vec<NodeRef>, target: NodeRef) -> bool {
+    path.iter().any(|node| node.borrow().name == target.borrow().name)
+}
+
+fn number_of_orbits(mut node: NodeRef) -> i32 {
+    let mut result = 0;
+    while node.borrow().orbiting.is_some() {
+        node = node.clone().borrow().orbiting.as_ref().unwrap().clone();
+        result += 1;
+    }
+    result
+}
+
+fn orbital_transfers(path: &Vec<NodeRef>) -> usize {
+    path.len() - 3
+}
+
+fn path_names(path: &Vec<NodeRef>) -> Vec<String> {
+    path.iter().map(|node| node.borrow().name.clone()).collect()
+}
+
+#[allow(dead_code)]
+fn print_path(path: &Vec<NodeRef>) {
+    println!("path: {}", path_names(path).join(" --> "));
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn orbit(orbits: &mut HashMap<String, String>, orbiter: &str, orbitee: &str) {
-        orbits.insert(String::from(orbiter), String::from(orbitee));
+    #[test]
+    fn test_path_contains() {
+        let com = Node::new_root("COM");
+        let path = vec![com.clone()];
+        assert!(path_contains(&path, com.clone()));
     }
 
     #[test]
-    fn test_mark_orbit() {
-        let mut orbits = HashMap::new();
-        mark_orbit(&mut orbits, "A)B");
-        mark_orbit(&mut orbits, "COM)A");
-        assert_eq!(orbits.get("B").unwrap(), "A");
-        assert_eq!(orbits.get("A").unwrap(), "COM");
+    fn test_simple_search() {
+        let com = Node::new_root("COM");
+        let b = add_orbiter(&com, "B");
+        let c = add_orbiter(&com, "C");
+
+        // path from B to C will need to go through COM
+
+        assert_eq!(
+            search(&vec![], b.clone(), c.clone()).map(|path| path_names(&path)),
+            Some(vec![String::from("B"), String::from("COM"), String::from("C")]),
+        );
     }
 
     #[test]
-    fn test_orbiting() {
-        let mut orbits = HashMap::new();
-        orbit(&mut orbits, "A", "COM");
-        orbit(&mut orbits, "B", "A");
-        assert_eq!(orbiting(&orbits, "B"), vec!["A", "COM"]);
+    #[allow(unused_variables)]
+    fn test_harder_search() {
+        let com = Node::new_root("COM");
+        let b = add_orbiter(&com, "B");
+        let c = add_orbiter(&b, "C");
+        let d = add_orbiter(&c, "D");
+        let e = add_orbiter(&d, "E");
+        let f = add_orbiter(&e, "F");
+        let g = add_orbiter(&b, "G");
+        let h = add_orbiter(&g, "H");
+        let i = add_orbiter(&d, "I");
+        let j = add_orbiter(&e, "J");
+        let k = add_orbiter(&j, "K");
+        let l = add_orbiter(&k, "L");
+
+        let you = add_orbiter(&k, "YOU");
+        let san = add_orbiter(&i, "SAN");
+
+        let expected = vec!["YOU", "K", "J", "E", "D", "I", "SAN"];
+
+        assert_eq!(
+            search(&vec![], you.clone(), san.clone()).map(|path| path_names(&path)),
+            Some(expected.iter().map(|s| String::from(*s)).collect()),
+        );
     }
 
     #[test]
-    fn test_orbit_count() {
-        let mut orbits = HashMap::new();
-        orbit(&mut orbits, "B", "COM");
-        orbit(&mut orbits, "C", "B");
-        orbit(&mut orbits, "D", "C");
-        orbit(&mut orbits, "E", "D");
-        orbit(&mut orbits, "F", "E");
-        orbit(&mut orbits, "G", "B");
-        orbit(&mut orbits, "H", "G");
-        orbit(&mut orbits, "I", "D");
-        orbit(&mut orbits, "J", "E");
-        orbit(&mut orbits, "K", "J");
-        orbit(&mut orbits, "L", "K");
-        assert_eq!(count_orbits(&orbits), 42);
+    fn test_number_of_orbits() {
+        let com = Node::new_root("COM");
+        let a = add_orbiter(&com, "A");
+        let b = add_orbiter(&a, "B");
+
+        assert_eq!(number_of_orbits(b), 2);
     }
 }
