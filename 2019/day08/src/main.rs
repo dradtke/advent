@@ -16,6 +16,12 @@ fn main() -> std::io::Result<()> {
 
     println!("part 1: {}", count_digits(&image[fewest_zeros], 1) * count_digits(&image[fewest_zeros], 2));
 
+    let collapsed_image = collapse_image(25, 6, &image);
+    println!("part 2:");
+    for row in collapsed_image {
+        println!("{}", row.iter().map(|pixel| draw_pixel(*pixel)).collect::<Vec<String>>().join(""));
+    }
+
     Ok(())
 }
 
@@ -51,6 +57,33 @@ fn count_digits(layer: &Layer, digit: u8) -> usize {
     layer.iter().fold(0, |acc, row| acc + row.iter().filter(|pixel| **pixel == digit).count())
 }
 
+fn collapse_image(width: usize, height: usize, image: &Image) -> Layer {
+    let mut collapsed_layer: Vec<Vec<Option<u8>>> = (0..height).map(|_| {
+        let mut row = Vec::with_capacity(width);
+        row.resize(width, None);
+        row
+    }).collect();
+
+    for layer in image {
+        for (y, row) in layer.iter().enumerate() {
+            for (x, pixel) in row.iter().enumerate() {
+                if collapsed_layer[y][x].is_some() || *pixel == 2 {
+                    continue;
+                }
+                collapsed_layer[y][x] = Some(*pixel);
+            }
+        }
+    }
+
+    collapsed_layer.into_iter().map(|row| {
+        row.into_iter().map(|pixel| pixel.unwrap()).collect()
+    }).collect()
+}
+
+fn draw_pixel(pixel: u8) -> String {
+    String::from(if pixel == 0 { "█" } else { " " })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -84,5 +117,16 @@ mod tests {
         assert_eq!(parse_char('7'), Some(7));
         assert_eq!(parse_char('8'), Some(8));
         assert_eq!(parse_char('9'), Some(9));
+    }
+
+    #[test]
+    fn test_collapse_image() {
+        let image = vec![
+            vec![vec![0,2],vec![2,2]],
+            vec![vec![1,1],vec![2,2]],
+            vec![vec![2,2],vec![1,2]],
+            vec![vec![0,0],vec![0,0]],
+        ];
+        assert_eq!(collapse_image(2, 2, &image), vec![vec![0,1],vec![1,0]]);
     }
 }
