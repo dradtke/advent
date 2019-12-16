@@ -1,3 +1,4 @@
+use std::convert::TryInto;
 use std::io::prelude::*;
 use std::sync::mpsc::{channel, Sender, Receiver};
 
@@ -33,7 +34,7 @@ impl Program {
         }
     }
 
-    fn input_arg(&mut self, modes: &mut i64) -> i64 {
+    fn input_arg(&mut self, modes: &mut isize) -> i64 {
         let arg = self.read(self.idx);
         self.idx += 1;
         match Mode::next(modes) {
@@ -43,17 +44,21 @@ impl Program {
         }
     }
 
-    fn output_arg(&mut self) -> usize {
+    fn output_arg(&mut self, modes: &mut isize) -> usize {
         let arg = self.read(self.idx);
         self.idx += 1;
-        arg as usize
+        match Mode::next(modes) {
+            Mode::Position => arg.try_into().unwrap(),
+            Mode::Immediate => panic!("output_arg doesn't support immediate mode!"),
+            Mode::Relative => ((arg as i64) + self.relative_base).try_into().unwrap(),
+        }
     }
 
-    fn step(&mut self) -> (i64, i64) {
+    fn step(&mut self) -> (isize, isize) {
         let opcode = self.read(self.idx) % 100; // last two digits
         let modes = self.read(self.idx) / 100; // everything else
         self.idx += 1;
-        (opcode, modes)
+        (opcode.try_into().unwrap(), modes.try_into().unwrap())
     }
 
     fn ensure_memory_length(&mut self, dest: usize) {
@@ -81,7 +86,7 @@ enum Mode {
 }
 
 impl Mode {
-    fn from(b: i64) -> Mode {
+    fn from(b: isize) -> Mode {
         match b {
             0 => Mode::Position,
             1 => Mode::Immediate,
@@ -90,7 +95,7 @@ impl Mode {
         }
     }
 
-    fn next(modes: &mut i64) -> Mode {
+    fn next(modes: &mut isize) -> Mode {
         let value = *modes % 10;
         if *modes > 0 {
             *modes /= 10;
@@ -116,29 +121,29 @@ fn run(mut program: Program, inputs: Receiver<i64>, outputs: Sender<i64>) {
                 1 => {
                     let arg1 = program.input_arg(&mut modes);
                     let arg2 = program.input_arg(&mut modes);
-                    let dest = program.output_arg();
-                    println!("[1] saving {} + {} to {}", arg1, arg2, dest);
+                    let dest = program.output_arg(&mut modes);
+                    // println!("[1] saving {} + {} to {}", arg1, arg2, dest);
                     program.write(arg1 + arg2, dest);
                 },
                 2 => {
                     let arg1 = program.input_arg(&mut modes);
                     let arg2 = program.input_arg(&mut modes);
-                    let dest = program.output_arg();
-                    println!("[2] saving {} * {} to {}", arg1, arg2, dest);
-                    program.write(arg1 * arg2, dest);
+                    let dest = program.output_arg(&mut modes);
+                    // println!("[2] saving {} * {} to {}", arg1, arg2, dest);
+                    program.write(arg1 * arg2, dest as usize);
                 },
                 3 => {
                     // input
-                    println!("[3] waiting for input...");
-                    let dest = program.output_arg();
+                    // println!("[3] waiting for input...");
+                    let dest = program.output_arg(&mut modes);
                     let input = inputs.recv().expect("ran out of inputs!");
-                    println!("[3] saving {} to {}", input, dest);
-                    program.write(input, dest);
+                    // println!("[3] saving {} to {}", input, dest);
+                    program.write(input, dest as usize);
                 },
                 4 => {
                     // output
                     let arg = program.input_arg(&mut modes);
-                    println!("[4] outputting {}", arg);
+                    // println!("[4] outputting {}", arg);
                     outputs.send(arg).unwrap();
                 },
                 5 => {
@@ -146,7 +151,7 @@ fn run(mut program: Program, inputs: Receiver<i64>, outputs: Sender<i64>) {
                     let arg1 = program.input_arg(&mut modes);
                     let arg2 = program.input_arg(&mut modes);
                     if arg1 != 0 {
-                        println!("[5] jumping to {}", arg2);
+                        // println!("[5] jumping to {}", arg2);
                         program.idx = arg2 as usize;
                     }
                 },
@@ -155,7 +160,7 @@ fn run(mut program: Program, inputs: Receiver<i64>, outputs: Sender<i64>) {
                     let arg1 = program.input_arg(&mut modes);
                     let arg2 = program.input_arg(&mut modes);
                     if arg1 == 0 {
-                        println!("[6] jumping to {}", arg2);
+                        // println!("[6] jumping to {}", arg2);
                         program.idx = arg2 as usize;
                     }
                 },
@@ -163,24 +168,23 @@ fn run(mut program: Program, inputs: Receiver<i64>, outputs: Sender<i64>) {
                     // less-than
                     let arg1 = program.input_arg(&mut modes);
                     let arg2 = program.input_arg(&mut modes);
-                    let dest = program.output_arg();
+                    let dest = program.output_arg(&mut modes);
                     program.write(if arg1 < arg2 { 1 } else { 0 }, dest);
-                    println!("[7] saving {} to {}", program.memory[dest], dest);
+                    // println!("[7] saving {} to {}", program.memory[dest], dest);
                 },
                 8 => {
                     // equals
                     let arg1 = program.input_arg(&mut modes);
                     let arg2 = program.input_arg(&mut modes);
-                    let dest = program.output_arg();
+                    let dest = program.output_arg(&mut modes);
                     program.write(if arg1 == arg2 { 1 } else { 0 }, dest);
-                    println!("[8] saving {} to {}", program.memory[dest], dest);
+                    // println!("[8] saving {} to {}", program.memory[dest], dest);
                 },
                 9 => {
                     // adjust relative base
-                    println!("real arg: {}", program.memory[program.idx]);
                     let arg = program.input_arg(&mut modes);
                     program.relative_base += arg;
-                    println!("[9] adjusting relative base by {} (new value: {})", arg, program.relative_base);
+                    // println!("[9] adjusting relative base by {} (new value: {})", arg, program.relative_base);
                 },
                 99 => {
                     break;
