@@ -6,19 +6,26 @@ fn main() {
     let program_memory = read_program(std::io::stdin().lock());
     let program = Program::new(program_memory);
 
-    let (input_sender, input_receiver) = channel();
-    let (output_sender, output_receiver) = channel();
-    run(program, input_receiver, output_sender);
+    {
+        let (input_sender, input_receiver) = channel();
+        let (output_sender, output_receiver) = channel();
+        run(program.clone(), input_receiver, output_sender);
 
-    input_sender.send(1).unwrap();
-    loop {
-        match output_receiver.recv() {
-            Ok(value) => println!("{}", value),
-            Err(_) => break,
-        }
+        input_sender.send(1).unwrap();
+        println!("part 1: {}", output_receiver.recv().unwrap());
+    }
+
+    {
+        let (input_sender, input_receiver) = channel();
+        let (output_sender, output_receiver) = channel();
+        run(program.clone(), input_receiver, output_sender);
+
+        input_sender.send(2).unwrap();
+        println!("part 2: {}", output_receiver.recv().unwrap());
     }
 }
 
+#[derive(Clone)]
 struct Program {
     memory: Vec<i64>,
     idx: usize,
