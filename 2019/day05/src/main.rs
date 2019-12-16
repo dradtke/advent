@@ -61,7 +61,7 @@ fn run(mut program: Program, input: isize) -> Program {
     loop {
         let opcode = program[i] % 100; // last two digits
         let modes = program[i] / 100; // everything else
-        // println!("processing: {} (opcode = {}, modes = {})", program[i], opcode, modes);
+        println!("processing: {} (opcode = {}, modes = {})", program[i], opcode, modes);
         match opcode {
             1 => {
                 let args = read_program_args(&program, &mut i, 3);
