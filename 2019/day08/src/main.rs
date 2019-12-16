@@ -81,7 +81,7 @@ fn collapse_image(width: usize, height: usize, image: &Image) -> Layer {
 }
 
 fn draw_pixel(pixel: u8) -> String {
-    String::from(if pixel == 0 { "█" } else { " " })
+    String::from(if pixel == 0 { " " } else { "█" })
 }
 
 #[cfg(test)]
