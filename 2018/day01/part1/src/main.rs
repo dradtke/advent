@@ -8,7 +8,7 @@ fn main() {
         .map(|line| line.expect("failed to read data"))
         .collect();
 
-    println!("part 1: {}", run(&input));
+    println!("Result: {}", run(&input));
 }
 
 fn run<T: AsRef<str>>(values: &[T]) -> i32 {
