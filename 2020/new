@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+
+if [[ $# -ne 1 ]]; then
+	echo "usage: $0 <day>"
+	exit 1
+fi
+
+day="$1"
+mkdir "${day}"
+
+cat >> "${day}/${day}.erl" << EOF
+-module(${day}).
+-export([input/0]).
+
+input() -> case io:get_line("") of
+                           eof -> [];
+                           {error, Desc} -> erlang:error(Desc);
+                           Line -> [string:chomp(Line)] ++ input()
+                   end.
+EOF
+
+cat >> "${day}/${day}_tests.erl" << EOF
+-module(${day}_tests).
+-include_lib("eunit/include/eunit.hrl").
+
+example_test_() ->
+	[?_assertEqual(true, true)].
+EOF
+
+cat >> "${day}/part1.erl" << EOF
+-module(part1).
+-export([start/0]).
+
+start() ->
+	io:format("Result: ~p~n", ["not implemented"]).
+EOF
+
+cat >> "${day}/part2.erl" << EOF
+-module(part2).
+-export([start/0]).
+
+start() ->
+	io:format("Result: ~p~n", ["not implemented"]).
+EOF
+
+echo "Created ${day}"
