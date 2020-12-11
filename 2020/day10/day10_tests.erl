@@ -20,3 +20,7 @@ count_adapt_all_test_() ->
 count_adapt_all_graph_test_() ->
 	[?_assertEqual(8, day10:count_adapt_all_graph(small_adapters())),
 	 ?_assertEqual(19208, day10:count_adapt_all_graph(large_adapters()))].
+
+search_test_() ->
+	[?_assertEqual(8, day10:search(small_adapters())),
+	 ?_assertEqual(19208, day10:search(large_adapters()))].
