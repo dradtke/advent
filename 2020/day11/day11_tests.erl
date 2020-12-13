@@ -14,6 +14,10 @@ small_input() -> [
 	"L.LLLLL.LL"
 				].
 
-calculate_occupied_seats_test_() ->
+calculate_occupied_seats_part1_test_() ->
 	{Map, Width, Height} = day11:parse(small_input()),
-	[?_assertEqual(37, day11:count_occupied(day11:calculate_changes(Map, Width, Height)))].
+	[?_assertEqual(37, day11:count_occupied(part1:calculate_changes(Map, Width, Height)))].
+
+calculate_occupied_seats_part2_test_() ->
+	{Map, Width, Height} = day11:parse(small_input()),
+	[?_assertEqual(26, day11:count_occupied(part2:calculate_changes(Map, Width, Height)))].
