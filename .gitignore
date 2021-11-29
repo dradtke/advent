@@ -1,5 +1,6 @@
 .*.swp
 *.dump
 *.beam
+target
 zig-cache
 Session.vim
