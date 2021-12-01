@@ -40,6 +40,7 @@ const BasicPolicy = struct {
     }
 };
 
+// unused, but this might be a neat pattern
 fn PasswordWithPolicy(comptime T: type) type {
     return struct {
         policy: T,
@@ -52,10 +53,6 @@ fn PasswordWithPolicy(comptime T: type) type {
 }
 
 pub fn run(allocator: *std.mem.Allocator, input: []const u8) !i32 {
-    const item = PasswordWithPolicy(BasicPolicy);
-    var list = std.ArrayList(item).init(allocator);
-    defer list.deinit();
-
     var num_valid: i32 = 0;
 
     var it = std.mem.tokenize(input, "\n");
