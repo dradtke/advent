@@ -89,11 +89,11 @@ fn key_for_value(allocator: *std.mem.Allocator, counts: BitCounts, comparator: a
 
     var it = counts.iterator();
     while (it.next()) |entry| {
-        // TODO: This apparently results in a memory leak, but I'm not sure how...
         try list.append(.{ .bit = entry.key_ptr.*, .count = entry.value_ptr.* });
     }
 
     var count_items = list.toOwnedSlice();
+    defer allocator.free(count_items);
     std.sort.sort(BitCountEntry, count_items, {}, comptime BitCountEntry.compare);
 
     if (count_items[0].count == count_items[1].count) {
