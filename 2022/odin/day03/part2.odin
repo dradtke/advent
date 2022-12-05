@@ -21,19 +21,19 @@ main :: proc() {
 
 run :: proc(input: string) -> string {
   priority_sum: int
-  for line in strings.split_lines(input) {
-    if len(line) == 0 {
-      break
-    }
-    comp1 := line[:len(line)/2]
-    comp2 := line[len(line)/2:]
-    m := make(map[rune]bool)
+  lines := strings.split_lines(input)
+  for i := 0; i < len(lines)/3; i += 1 {
+    m := make(map[int]map[rune]bool)
     defer delete(m)
-    for char in comp1 {
-      m[char] = true
+    for g in 0..<3 {
+      m[g] = make(map[rune]bool)
+      line := lines[(i*3)+g]
+      for char in line {
+        (&m[g])[char] = true
+      }
     }
-    for char in comp2 {
-      if m[char] {
+    for char, _ in m[0] {
+      if m[1][char] && m[2][char] {
         priority_sum += get_priority(char)
         break
       }
@@ -60,5 +60,5 @@ PmmdzqPrVvPwwTWBwg
 wMqvLMZHhHMvwLHjbvcjnnSBnvTQFn
 ttgJtRGJQctTZtZT
 CrZsJsPPZsGzwwsLwLmpwMDw`)
-  testing.expect_value(t, result, "157")
+  testing.expect_value(t, result, "70")
 }
