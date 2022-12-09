@@ -71,7 +71,7 @@ get_stack_positions :: proc(line: string) -> map[int]int {
 }
 
 MoveInstruction :: struct {
-  Count, From, To: int
+  Count, From, To: int,
 }
 
 parse_move_instruction :: proc(line: string) -> MoveInstruction {

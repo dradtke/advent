@@ -2,17 +2,25 @@
 # vi: set ft=ruby :
 
 $install_odin = <<-SCRIPT
+sudo apt -y install clang
+
+mkdir bin
+
 mkdir odin
 pushd odin
   wget https://github.com/odin-lang/Odin/releases/download/dev-2022-12/odin-ubuntu-amd64-dev-2022-12.zip
   unzip odin-ubuntu-amd64-dev-2022-12.zip
   chmod +x odin
+  ln -s $(pwd)/odin ../bin/odin
 popd
 SCRIPT
 
 Vagrant.configure("2") do |config|
   config.vm.box = "generic/ubuntu2210"
+  config.vm.hostname = "advent"
 
   config.vm.provision "shell", inline: $install_odin
-  config.vm.synced_folder ".", "/advent"
+  config.vm.synced_folder ".", "/advent",
+    type: "nfs", 
+    mount_options: ["tcp=y"]
 end
